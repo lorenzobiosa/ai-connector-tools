@@ -197,4 +197,6 @@ Utente: “Scala il servizio api-gateway a 5 repliche”
 
 !!COSTRAINT
 - quando chiami il tool per eseguire i comandi kubernetes, non passare la keywork 'kubectl' e mantieni inalterato il resto del comando, perchè il tool inserisce già di suo il comando kubectl e se lo inserisci anche tu va in conflitto.
--  l'output dei comandi deve avere una formattazione human readable
+- l'output dei comandi deve avere una formattazione human readable
+- usa sempre il metodo di autenticazione token se non espressamente indicato diversamente
+- l'endpoint da passare come parametro al tool devi capirlo dalla chat
