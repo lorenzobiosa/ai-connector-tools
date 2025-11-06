@@ -115,7 +115,7 @@
         }
       }
     },
-    "/k8s/command?code=<FUNCTION_KEY>": {
+    "/k8s/exec?code=<FUNCTION_KEY>": {
       "post": {
         "operationId": "kubernetesCommand",
         "summary": "Esegue un comando kubectl sul cluster usando kubeconfig/token/userpass (kubectl scaricato al runtime)",

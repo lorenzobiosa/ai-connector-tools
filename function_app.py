@@ -424,7 +424,7 @@ def _write_temp_kubeconfig(content: str) -> str:
     tf.close()
     return tf.name
 
-@app.route(route="k8s/command", methods=["POST"], auth_level=func.AuthLevel.FUNCTION)
+@app.route(route="k8s/exec", methods=["POST"], auth_level=func.AuthLevel.FUNCTION)
 def kubectl_exec(req: func.HttpRequest) -> func.HttpResponse:
     request_id = req.headers.get("x-correlation-id") or req.headers.get("x-request-id") or os.urandom(8).hex()
     try:

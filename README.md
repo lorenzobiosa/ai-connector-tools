@@ -142,7 +142,7 @@ curl -X POST   -H "Content-Type: application/json"   -d '{"host":"10.10.0.5","us
 
 Endpoint:
 ```
-POST /k8s/command?code=<FUNCTION_KEY>
+POST /k8s/exec?code=<FUNCTION_KEY>
 ```
 
 Esegue comandi `kubectl` o `oc` (OpenShift) su un cluster remoto.  
@@ -172,7 +172,7 @@ Supporta autenticazione tramite **token**, **username/password**, o **kubeconfig
 
 #### Esempio `curl`
 ```bash
-curl -X POST   -H "Content-Type: application/json"   -d '{"api_server":"https://10.0.0.1:6443","auth_method":"token","command":"kubectl get pods -A"}'   "https://<FUNCTION_APP>.azurewebsites.net/api/k8s/command?code=<FUNCTION_KEY>"
+curl -X POST   -H "Content-Type: application/json"   -d '{"api_server":"https://10.0.0.1:6443","auth_method":"token","command":"kubectl get pods -A"}'   "https://<FUNCTION_APP>.azurewebsites.net/api/k8s/exec?code=<FUNCTION_KEY>"
 ```
 
 ---
