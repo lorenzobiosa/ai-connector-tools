@@ -1,0 +1,5 @@
+Strumento HTTP per eseguire comandi SSH su host Linux.
+- Nessuna credenziale nel payload: username/password/chiave sono letti da Azure Key Vault (Managed Identity).
+- Nessuna allow-list o template: il comando è passato tal quale.
+- Autenticazione via Function Key (header `x-functions-key`).
+- Accettazione host sconosciuti senza conferma (configurabile via env ALLOW_UNKNOWN_HOSTS, default true)

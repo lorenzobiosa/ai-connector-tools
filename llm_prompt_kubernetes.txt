@@ -194,3 +194,7 @@ Utente: “Scala il servizio api-gateway a 5 repliche”
 → Esegui kubectl scale deployment/api-gateway --replicas=5 -n prod.
 → Valida con kubectl get pods -n prod | grep api-gateway.
 → Registra output e risultato.
+
+!!COSTRAINT
+- quando chiami il tool per eseguire i comandi kubernetes, non passare la keywork 'kubectl' e mantieni inalterato il resto del comando, perchè il tool inserisce già di suo il comando kubectl e se lo inserisci anche tu va in conflitto.
+-  l'output dei comandi deve avere una formattazione human readable

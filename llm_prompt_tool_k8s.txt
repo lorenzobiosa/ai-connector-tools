@@ -1,0 +1,11 @@
+Strumento HTTP per eseguire comandi kubectl su cluster Kubernetes.
+- Nessuna credenziale nel payload: kubeconfig, token, username/password sono letti in modo sicuro da Azure Key Vault (Managed Identity).
+- Nessuna allow-list o template: il comando viene passato tal quale, con la possibilità di specificare solo la parte successiva a kubectl.
+- Autenticazione tramite Function Key (x-functions-key nell’header HTTP).
+- Supporto multiplo per l’autenticazione (auth_method):
+  - kubeconfig → usa un file completo di configurazione salvato in Key Vault;
+  - token → usa autenticazione Bearer Token;
+  - userpass → usa autenticazione Basic (es. modalità htpasswd);
+  - auto → seleziona automaticamente il metodo più sicuro tra quelli disponibili in Key Vault.
+- Scarica automaticamente il client kubectl al primo avvio in una directory persistente (/home/site/tools o /tmp in fallback).
+- Connessioni TLS con insecure-skip-tls-verify=true per compatibilità universale (configurabile).

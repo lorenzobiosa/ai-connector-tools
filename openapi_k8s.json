@@ -1,0 +1,116 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Kubernetes Exec API",
+    "version": "1.0.0",
+    "description": "API per eseguire comandi `kubectl` remoti verso cluster Kubernetes o OpenShift.\nLe credenziali e la configurazione vengono gestite in sicurezza tramite Azure Key Vault."
+  },
+  "servers": [
+    {
+      "url": "https://<APP>.azurewebsites.net"
+    }
+  ],
+  "paths": {
+    "/k8s/exec?code=<FUNCTION_KEY>": {
+      "post": {
+        "summary": "Esecuzione remota di comandi kubectl",
+        "operationId": "kubectlExec",
+        "description": "Esegue un comando kubectl generico verso un cluster Kubernetes remoto. Supporta autenticazione con **kubeconfig**, **token**, **username/password**, o modalità **auto**. In modalità `auto`, viene scelto automaticamente il metodo più sicuro disponibile.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/K8SCommandRequest"
+              },
+              "example": {
+                "api_server": "https://1.2.3.4:6443",
+                "auth_method": "auto",
+                "command": "get pods -A",
+                "timeout_sec": 60
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Comando kubectl eseguito",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/K8SCommandResponse"
+                }
+              }
+            }
+          },
+          "400": { "description": "Richiesta non valida" },
+          "401": { "description": "Credenziali non valide" },
+          "408": { "description": "Timeout comando kubectl" },
+          "500": { "description": "Errore interno" }
+        },
+        "security": [
+          { "function_key": [] }
+        ]
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "function_key": {
+        "type": "apiKey",
+        "name": "x-functions-key",
+        "in": "header"
+      }
+    },
+    "schemas": {
+      "K8SCommandRequest": {
+        "type": "object",
+        "required": ["api_server", "command"],
+        "properties": {
+          "api_server": {
+            "type": "string",
+            "description": "Endpoint API server Kubernetes"
+          },
+          "auth_method": {
+            "type": "string",
+            "enum": ["auto", "kubeconfig", "token", "userpass"],
+            "default": "auto",
+            "description": "Metodo di autenticazione"
+          },
+          "command": {
+            "type": "string",
+            "description": "Comando kubectl completo da eseguire"
+          },
+          "kubeconfig": {
+            "type": "string",
+            "nullable": true,
+            "description": "Contenuto YAML o base64 del kubeconfig (opzionale)"
+          },
+          "token": { "type": "string", "nullable": true },
+          "username": { "type": "string", "nullable": true },
+          "password": { "type": "string", "nullable": true },
+          "timeout_sec": {
+            "type": "number",
+            "default": 60,
+            "description": "Timeout in secondi"
+          },
+          "correlation_id": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "K8SCommandResponse": {
+        "type": "object",
+        "properties": {
+          "command_executed": { "type": "string" },
+          "exit_status": { "type": "integer", "nullable": true },
+          "stdout": { "type": "string" },
+          "stderr": { "type": "string" },
+          "duration_ms": { "type": "integer" },
+          "request_id": { "type": "string" }
+        }
+      }
+    }
+  }
+}
