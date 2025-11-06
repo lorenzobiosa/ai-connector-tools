@@ -39,6 +39,9 @@ KUBE_PASSWORD_SECRET_NAME = os.getenv("KUBE_PASSWORD_SECRET_NAME", "")
 # Preferenza autenticazione SSH: "auto" (preferisce chiave se presente), "key", "password"
 AUTH_PREFERENCE = os.getenv("AUTH_PREFERENCE", "auto").lower()
 
+# Preferenza autenticazione Kubernetes: "auto" (sceglie kubeconfig > token > userpass)
+K8S_AUTH_PREFERENCE = os.getenv("K8S_AUTH_PREFERENCE", "auto").lower()
+
 # Host sconosciuti: per richiesta utente -> abilitato di default
 ALLOW_UNKNOWN_HOSTS = os.getenv("ALLOW_UNKNOWN_HOSTS", "true").lower() == "true"
 
@@ -351,6 +354,38 @@ def _ensure_kubectl_installed(version: str = DEFAULT_KUBECTL_VERSION, force: boo
         logger.exception("Errore durante il download di kubectl: %s", e)
         raise RuntimeError("Unable to download kubectl: %s" % e)
 
+def _choose_k8s_auth_method(kc: str, tok: str, usr: str, pwd: str) -> str:
+    """
+    Determina quale metodo Kubernetes usare in base a K8S_AUTH_PREFERENCE e alle credenziali disponibili.
+    Ordine di sicurezza: kubeconfig > token > userpass.
+    """
+    pref = K8S_AUTH_PREFERENCE if K8S_AUTH_PREFERENCE in ("auto", "kubeconfig", "token", "userpass") else "auto"
+
+    if pref == "kubeconfig":
+        if kc:
+            return "kubeconfig"
+        raise RuntimeError("K8S_AUTH_PREFERENCE=kubeconfig ma kubeconfig non presente")
+
+    if pref == "token":
+        if tok:
+            return "token"
+        raise RuntimeError("K8S_AUTH_PREFERENCE=token ma token non presente")
+
+    if pref == "userpass":
+        if usr and pwd:
+            return "userpass"
+        raise RuntimeError("K8S_AUTH_PREFERENCE=userpass ma username/password non presenti")
+
+    # AUTO MODE → priorità: kubeconfig > token > userpass
+    if kc:
+        return "kubeconfig"
+    if tok:
+        return "token"
+    if usr and pwd:
+        return "userpass"
+
+    raise RuntimeError("Nessuna credenziale Kubernetes disponibile (né kubeconfig, né token, né username/password)")
+
 def _build_kubeconfig_from_parts(api_server: str, token: str = None, username: str = None, password: str = None) -> str:
     cfg = {
         "apiVersion": "v1",
@@ -390,7 +425,7 @@ def _write_temp_kubeconfig(content: str) -> str:
     return tf.name
 
 @app.route(route="k8s/command", methods=["POST"], auth_level=func.AuthLevel.FUNCTION)
-def kubectl_command_http(req: func.HttpRequest) -> func.HttpResponse:
+def kubectl_exec(req: func.HttpRequest) -> func.HttpResponse:
     request_id = req.headers.get("x-correlation-id") or req.headers.get("x-request-id") or os.urandom(8).hex()
     try:
         body = req.get_json()
@@ -403,7 +438,7 @@ def kubectl_command_http(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse(json.dumps({"error": "ValidationError", "message": str(e), "request_id": request_id}),
                                  status_code=400, mimetype="application/json")
 
-    # Recupera credenziali critiche da Key Vault se non presenti nella request
+    # Recupera credenziali da request o Key Vault
     kc = data.kubeconfig or ""
     tok = data.token or ""
     usr = data.username or ""
@@ -418,35 +453,36 @@ def kubectl_command_http(req: func.HttpRequest) -> func.HttpResponse:
     if not pwd and KUBE_PASSWORD_SECRET_NAME:
         pwd = _kv_get(KUBE_PASSWORD_SECRET_NAME) or ""
 
+    # 🔹 Determina metodo di autenticazione
+    try:
+        auth_method = data.auth_method or _choose_k8s_auth_method(kc, tok, usr, pwd)
+    except Exception as e:
+        return func.HttpResponse(json.dumps({"error": "AuthSelectionError", "message": str(e), "request_id": request_id}),
+                                 status_code=400, mimetype="application/json")
+
     kubeconfig_path = None
     try:
-        if data.auth_method == "kubeconfig":
-            if not kc:
-                return func.HttpResponse(json.dumps({"error": "NoKubeconfig", "message": "kubeconfig non fornito e non presente in Key Vault", "request_id": request_id}),
-                                         status_code=400, mimetype="application/json")
+        if auth_method == "kubeconfig":
             s = kc.strip()
             try:
                 if not s.startswith("apiVersion") and not s.startswith("kind") and "clusters:" not in s:
-                    decoded = base64.b64decode(s).decode("utf-8")
-                    kc = decoded
+                    kc = base64.b64decode(s).decode("utf-8")
             except Exception:
                 pass
             kubeconfig_path = _write_temp_kubeconfig(kc)
-        elif data.auth_method == "token":
-            if not tok:
-                return func.HttpResponse(json.dumps({"error": "NoToken", "message": "token non fornito e non presente in Key Vault", "request_id": request_id}),
-                                         status_code=400, mimetype="application/json")
+
+        elif auth_method == "token":
             kube_yaml = _build_kubeconfig_from_parts(data.api_server, token=tok)
             kubeconfig_path = _write_temp_kubeconfig(kube_yaml)
-        elif data.auth_method == "userpass":
-            if not usr or not pwd:
-                return func.HttpResponse(json.dumps({"error": "NoCredentials", "message": "username/password non forniti e non presenti in Key Vault", "request_id": request_id}),
-                                         status_code=400, mimetype="application/json")
+
+        elif auth_method == "userpass":
             kube_yaml = _build_kubeconfig_from_parts(data.api_server, username=usr, password=pwd)
             kubeconfig_path = _write_temp_kubeconfig(kube_yaml)
+
         else:
-            return func.HttpResponse(json.dumps({"error": "BadAuthMethod", "message": "auth_method non valido", "request_id": request_id}),
+            return func.HttpResponse(json.dumps({"error": "BadAuthMethod", "message": f"auth_method non valido: {auth_method}", "request_id": request_id}),
                                      status_code=400, mimetype="application/json")
+
     except Exception as e:
         logger.exception("Errore nella costruzione del kubeconfig")
         return func.HttpResponse(json.dumps({"error": "KubeConfigError", "message": str(e), "request_id": request_id}),
