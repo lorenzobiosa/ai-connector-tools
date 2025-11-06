@@ -1,0 +1,363 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "SSH + Kubernetes Exec Tool (kubectl persistent /home/site/tools)",
+    "version": "1.3.0",
+    "description": "Tool HTTP per eseguire comandi SSH su host Linux.\n- Nessuna credenziale nel payload: username/password/chiave sono letti da Key Vault (Managed Identity).\n- Autenticazione via query param `?code=<FUNCTION_KEY>` (Azure Functions).\n- Nessuna allow-list o template: il comando è passato tal quale."
+  },
+  "servers": [
+    {
+      "url": "https://<APP>.azurewebsites.net"
+    }
+  ],
+  "paths": {
+    "/ssh/exec?code=<FUNCTION_KEY>": {
+      "post": {
+        "operationId": "sshExec",
+        "summary": "Esegue un comando SSH sull'host target",
+        "description": "Invoca la Function per eseguire un comando arbitrario via SSH.",
+        "security": [
+          {
+            "FunctionKeyQuery": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SSHRequest"
+              },
+              "examples": {
+                "commandExample": {
+                  "summary": "Esecuzione di un comando",
+                  "value": {
+                    "host": "192.168.1.1",
+                    "command": "df -h",
+                    "timeout_sec": 20
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Comando eseguito con successo (exit 0)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SSHResponse"
+                }
+              }
+            }
+          },
+          "207": {
+            "description": "Comando eseguito con exit != 0",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SSHResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Errore di validazione input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Autenticazione SSH fallita o funzione non autorizzata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Timeout durante esecuzione/lettura output",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Errore di livello SSH",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Errore interno inatteso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/k8s/command?code=<FUNCTION_KEY>": {
+      "post": {
+        "operationId": "kubernetesCommand",
+        "summary": "Esegue un comando kubectl sul cluster usando kubeconfig/token/userpass (kubectl scaricato al runtime)",
+        "description": "Endpoint generico che esegue comandi kubectl forniti nel campo `command`. Le credenziali critiche possono essere lette da Key Vault (KUBE_CONFIG_SECRET_NAME, KUBE_TOKEN_SECRET_NAME, KUBE_USERNAME_SECRET_NAME, KUBE_PASSWORD_SECRET_NAME).",
+        "security": [
+          {
+            "FunctionKeyQuery": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/K8SCommandRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Risultato esecuzione",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/K8SResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Errore di validazione",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Errore interno",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "FunctionKeyQuery": {
+        "type": "apiKey",
+        "in": "query",
+        "name": "code"
+      }
+    },
+    "schemas": {
+      "SSHRequest": {
+        "type": "object",
+        "description": "Parametri per esecuzione SSH (nessuna credenziale; tutte da Key Vault)",
+        "properties": {
+          "host": {
+            "type": "string",
+            "description": "IP o FQDN dell'host target",
+            "example": "192.168.1.1"
+          },
+          "port": {
+            "type": "integer",
+            "description": "Porta SSH",
+            "default": 22
+          },
+          "command": {
+            "type": "string",
+            "description": "Comando da eseguire (passato tal quale)",
+            "example": "df -h"
+          },
+          "timeout_sec": {
+            "type": "number",
+            "description": "Timeout per exec/lettura output (secondi)",
+            "default": 30
+          },
+          "correlation_id": {
+            "type": "string",
+            "description": "Correlation ID opzionale"
+          }
+        },
+        "required": [
+          "host",
+          "command"
+        ]
+      },
+      "SSHResponse": {
+        "type": "object",
+        "properties": {
+          "host": {
+            "type": "string"
+          },
+          "port": {
+            "type": "integer"
+          },
+          "username_source": {
+            "type": "string",
+            "example": "KeyVault"
+          },
+          "auth_mode": {
+            "type": "string",
+            "enum": [
+              "password",
+              "key"
+            ]
+          },
+          "command_executed": {
+            "type": "string"
+          },
+          "exit_status": {
+            "type": "integer"
+          },
+          "stdout": {
+            "type": "string"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout_truncated": {
+            "type": "boolean"
+          },
+          "stderr_truncated": {
+            "type": "boolean"
+          },
+          "started_at": {
+            "type": "number",
+            "format": "double"
+          },
+          "finished_at": {
+            "type": "number",
+            "format": "double"
+          },
+          "duration_ms": {
+            "type": "integer"
+          },
+          "request_id": {
+            "type": "string"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "example": "ValidationError"
+          },
+          "message": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": "string"
+          }
+        }
+      },
+      "K8SCommandRequest": {
+        "type": "object",
+        "properties": {
+          "api_server": {
+            "type": "string"
+          },
+          "auth_method": {
+            "type": "string",
+            "enum": [
+              "kubeconfig",
+              "token",
+              "userpass"
+            ]
+          },
+          "command": {
+            "type": "string"
+          },
+          "kubeconfig": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "timeout_sec": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "api_server",
+          "command"
+        ]
+      },
+      "K8SResponse": {
+        "type": "object",
+        "properties": {
+          "command_executed": {
+            "type": "string"
+          },
+          "exit_status": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "stdout": {
+            "type": "string"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout_truncated": {
+            "type": "boolean"
+          },
+          "stderr_truncated": {
+            "type": "boolean"
+          },
+          "started_at": {
+            "type": "number"
+          },
+          "finished_at": {
+            "type": "number"
+          },
+          "duration_ms": {
+            "type": "integer"
+          },
+          "request_id": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

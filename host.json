@@ -1,0 +1,16 @@
+{
+  "version": "2.0",
+  "functionTimeout": "00:03:00",
+  "logging": {
+    "applicationInsights": {
+      "samplingSettings": { "isEnabled": true }
+    }
+  },
+  "extensions": {
+    "http": {
+      "routePrefix": "",
+      "maxOutstandingRequests": 200,
+      "maxConcurrentRequests": 200
+    }
+  }
+}

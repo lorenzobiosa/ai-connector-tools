@@ -1,0 +1,12 @@
+# Escludi elementi non necessari dal pacchetto di pubblicazione
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+*.pytest_cache/
+.vscode/
+.idea/
+.venv/
+.env
+.env.*
+tests/
