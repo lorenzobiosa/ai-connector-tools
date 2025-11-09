@@ -10,4 +10,4 @@ logger = logging.getLogger(APP_NAME)
 logger.setLevel(getattr(logging, LOG_LEVEL, logging.INFO))
 
 # Import dei moduli che registrano le route
-from . import ssh_api, k8s_api, atlas_api, mongo_api  # noqa: F401
+import ssh_api, k8s_api, atlas_api, mongo_api  # noqa: F401
