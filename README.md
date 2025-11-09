@@ -205,7 +205,7 @@ curl -X POST "https://<APP>.azurewebsites.net/mongo/exec?code=<FUNCTION_KEY>" \
 - `DEFAULT_KUBECTL_VERSION`, `KUBECTL_DOWNLOAD_URL_TEMPLATE`
 
 **Atlas**
-- `ATLAS_PUBLIC_KEY_SECRET_NAME`, `ATLAS_PRIVATE_KEY_SECRET_NAME`  
+- ATLAS_PUBLIC_KEY_SECRET_NAME`, `ATLAS_PRIVATE_KEY_SECRET_NAME`  
 - `ATLAS_AUTH_PREFERENCE` = `auto` | `api_key` | `profile`  
 - `ATLAS_DEFAULT_PROFILE` (opz.)
 
@@ -215,6 +215,22 @@ curl -X POST "https://<APP>.azurewebsites.net/mongo/exec?code=<FUNCTION_KEY>" \
 - `MONGO_HOST` **o** `MONGO_HOST_SECRET_NAME`  
 - `MONGO_URI_SECRET_NAME` (fallback)  
 - `MONGO_SCHEME` (`mongodb+srv` di default), `MONGO_AUTH_DB` (`admin`), `MONGO_OPTIONS`, `MONGO_TLS`
+
+---
+
+## Creazione del pacchetto di distribuzione
+Per garantire un deploy conforme alle best practice, è necessario predisporre un archivio contenente esclusivamente i componenti richiesti dal runtime di **Azure Functions**. Tale approccio assicura **integrità**, **portabilità** e riduce il rischio di includere asset non pertinenti.
+
+### Procedura di packaging
+Dalla **root del progetto**, eseguire il seguente comando:
+```bash
+zip -r app_package.zip host.json requirements.txt README.md src/
+```
+
+### Linee guida
+- **Escludere** directory non necessarie all’esecuzione, quali `openapi/` e `prompts/`, in quanto destinate alla documentazione e ai modelli LLM.
+- **Verificare** che il file `function_app.py` sia presente all’interno della cartella `src/`, poiché costituisce l’entry point per il runtime di Azure Functions.
+- **Includere** `requirements.txt` per consentire la corretta risoluzione delle dipendenze durante il processo di provisioning.
 
 ---
 
