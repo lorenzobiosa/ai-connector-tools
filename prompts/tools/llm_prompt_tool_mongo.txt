@@ -1,9 +1,11 @@
-Strumento HTTP per eseguire operazioni su database MongoDB (query e comandi CRUD) in modo sicuro.
-- Nessuna credenziale nel payload: username/password o URI sono letti da Azure Key Vault (Managed Identity).
-- Nessuna allow-list o template: il comando viene passato come script JSON (es. {"collection":"users","operation":"find","filter":{"active":true}}).
-- Autenticazione tramite Function Key (header `x-functions-key`).
-- Supporto multiplo per l’autenticazione (auth_method):
-  - userpass → usa username/password e host salvati in Key Vault per costruire l’URI;
-  - uri → usa una connection string completa salvata in Key Vault;
-  - auto → seleziona automaticamente il metodo più sicuro tra quelli disponibili (preferenza userpass).
-- Connessioni TLS abilitate per compatibilità universale; nessuna credenziale esposta nei log o nel payload.
+Strumento HTTP per eseguire comandi MongoDB (query, aggregazioni e CRUD) senza guardrail lato server.  
+- Nessuna credenziale nel payload: username/password o URI sono letti da Azure Key Vault (Managed Identity).  
+- Parametro unico `command`: oggetto JSON eseguito così com’è (es. `{"ping":1}` o `{"target":"collection","collection":"users","name":"update_many","args":[...]}`).  
+- Autenticazione tramite Function Key (`x-functions-key` o `?code=`).  
+- Connessione basata su `MONGO_AUTH_PREFERENCE`:  
+  • `userpass` → costruisce URI con credenziali da Key Vault  
+  • `uri` → usa connection string da Key Vault  
+  • `auto` → tenta prima userpass, poi uri  
+- Schema: inferito dall’host (Atlas → `mongodb+srv`, altrimenti `mongodb`), override con `MONGO_SCHEME`.  
+- Supporto porte multiple via `MONGO_PORTS` (solo per `mongodb`).  
+- TLS abilitato; timeout configurabile (`timeout_sec`, max 30s).  

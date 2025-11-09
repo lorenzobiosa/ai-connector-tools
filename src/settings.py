@@ -1,3 +1,4 @@
+# settings.py
 import os
 
 # =========================
@@ -51,15 +52,26 @@ ATLAS_CLI_DOWNLOAD_URL_TEMPLATE = os.getenv(
 ATLAS_CLI_PATH = os.getenv("ATLAS_CLI_PATH", "/home/site/tools/mongodb-atlas-cli")
 ATLAS_CLI_FALLBACK_PATH = os.getenv("ATLAS_CLI_FALLBACK_PATH", "/tmp/mongodb-atlas-cli")
 
-# Mongo
-MONGO_AUTH_PREFERENCE = os.getenv("MONGO_AUTH_PREFERENCE", "userpass").lower()  # userpass|uri|auto
+# ---- Mongo (per mongo_exec)
+MONGO_AUTH_PREFERENCE = os.getenv("MONGO_AUTH_PREFERENCE", "auto").lower()  # userpass|uri|auto
 MONGO_URI_SECRET_NAME = os.getenv("MONGO_URI_SECRET_NAME", "")
 MONGO_USERNAME_SECRET_NAME = os.getenv("MONGO_USERNAME_SECRET_NAME", "")
 MONGO_PASSWORD_SECRET_NAME = os.getenv("MONGO_PASSWORD_SECRET_NAME", "")
 
 MONGO_HOST = os.getenv("MONGO_HOST", "")
 MONGO_HOST_SECRET_NAME = os.getenv("MONGO_HOST_SECRET_NAME", "")
-MONGO_SCHEME = os.getenv("MONGO_SCHEME", "mongodb+srv")  # mongodb|mongodb+srv
+
+# SCHEMA: se non impostato, verrà inferito dall'host (Atlas -> mongodb+srv, altrimenti mongodb)
+MONGO_SCHEME = os.getenv("MONGO_SCHEME")  # "mongodb+srv" | "mongodb" | None
+
+# Porte opzionali (popolabili dall'LLM) — applicate solo per schema 'mongodb'
+# Esempi: "27017" oppure "27017,27018,27019"
+MONGO_PORTS = os.getenv("MONGO_PORTS", "")
+
 MONGO_AUTH_DB = os.getenv("MONGO_AUTH_DB", "admin")
-MONGO_OPTIONS = os.getenv("MONGO_OPTIONS", "retryWrites=true&w=majority")
+
+# Se valorizzato con HTML-safe (&amp;), mongo_exec normalizza -> '&'
+MONGO_OPTIONS = os.getenv("MONGO_OPTIONS", "retryWrites=true&amp;w=majority")
+
+# TLS per 'mongodb' (per 'mongodb+srv' è implicito)
 MONGO_TLS = os.getenv("MONGO_TLS", "true").lower() == "true"

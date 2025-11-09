@@ -2,8 +2,8 @@
     "openapi": "3.0.3",
     "info": {
         "title": "Mongo Exec API",
-        "version": "1.0.0",
-        "description": "API per eseguire operazioni su MongoDB in modalità sicura.\n- Nessuna credenziale nel payload: username/password o URI sono gestiti tramite Key Vault e variabili d'ambiente.\n- Supporta autenticazione con **userpass**, **uri**, o modalità **auto** (preferisce userpass se disponibile)."
+        "version": "3.2.0",
+        "description": "API per eseguire comandi MongoDB senza guardrail lato server. Nessuna credenziale nel payload; l'host e le porte possono essere passati nel body per override. L'autenticazione è selezionata dal backend in base a MONGO_AUTH_PREFERENCE (userpass|uri|auto)."
     },
     "servers": [
         {
@@ -13,12 +13,22 @@
     "paths": {
         "/mongo/exec?code=<FUNCTION_KEY>": {
             "post": {
-                "summary": "Esecuzione remota di operazioni MongoDB",
+                "summary": "Esecuzione remota di comandi MongoDB",
                 "operationId": "mongoExec",
-                "description": "Invoca la Function per eseguire query MongoDB (find, distinct, aggregate). Le credenziali sono gestite tramite Key Vault e non devono essere incluse nel payload.",
                 "security": [
                     {
                         "function_key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "code",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Function key alternativa all'header x-functions-key"
                     }
                 ],
                 "requestBody": {
@@ -26,33 +36,153 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/MongoExecRequest"
+                                "type": "object",
+                                "required": [
+                                    "database",
+                                    "command"
+                                ],
+                                "properties": {
+                                    "database": {
+                                        "type": "string",
+                                        "description": "Nome database"
+                                    },
+                                    "host": {
+                                        "type": "string",
+                                        "description": "Hostname o lista separata da virgole (override facoltativo)"
+                                    },
+                                    "ports": {
+                                        "type": "string",
+                                        "description": "Porta o lista separata da virgole (override; solo schema 'mongodb')"
+                                    },
+                                    "command": {
+                                        "description": "Comando MongoDB da eseguire. Se è un oggetto privo di 'target' e 'name', viene passato a db.command(obj). In alternativa, invocazione generica: {target:'client|db|collection', name:'<metodo>', collection?:'<nome>', args?:[], kwargs?:{}}.",
+                                        "oneOf": [
+                                            {
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "string"
+                                            }
+                                        ]
+                                    },
+                                    "timeout_sec": {
+                                        "type": "number",
+                                        "default": 120
+                                    },
+                                    "correlation_id": {
+                                        "type": "string"
+                                    }
+                                }
                             },
-                            "example": {
-                                "database": "appdb",
-                                "script": "{\"collection\":\"users\",\"operation\":\"find\",\"filter\":{\"active\":true}}",
-                                "auth_method": "auto",
-                                "timeout_sec": 120
+                            "examples": {
+                                "db_command_ping": {
+                                    "summary": "db.command — ping",
+                                    "value": {
+                                        "database": "admin",
+                                        "host": "snmn9050d01-pl-0.gvuh8x.mongodb.net",
+                                        "ports": "27017,27018",
+                                        "command": {
+                                            "ping": 1
+                                        },
+                                        "timeout_sec": 20
+                                    }
+                                },
+                                "generic_find": {
+                                    "summary": "Invocazione generica — collection.find",
+                                    "value": {
+                                        "database": "appdb",
+                                        "host": "mongo.internal",
+                                        "ports": "27017",
+                                        "command": {
+                                            "target": "collection",
+                                            "collection": "users",
+                                            "name": "find",
+                                            "args": [
+                                                {
+                                                    "active": true
+                                                },
+                                                {
+                                                    "projection": {
+                                                        "password": 0
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
                 },
                 "responses": {
                     "200": {
-                        "description": "Operazione MongoDB eseguita con successo",
+                        "description": "Comando eseguito con successo",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/MongoExecResponse"
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Risultato del comando (cursor materializzato; write results serializzati)",
+                                            "oneOf": [
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object"
+                                                    }
+                                                },
+                                                {
+                                                    "type": "object"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                }
+                                            ]
+                                        },
+                                        "auth_mode": {
+                                            "type": "string",
+                                            "enum": [
+                                                "userpass",
+                                                "uri"
+                                            ]
+                                        },
+                                        "scheme": {
+                                            "type": "string",
+                                            "enum": [
+                                                "mongodb",
+                                                "mongodb+srv"
+                                            ]
+                                        },
+                                        "host": {
+                                            "type": "string",
+                                            "description": "Host effettivo usato (con porte applicate dove rilevante)"
+                                        },
+                                        "request_id": {
+                                            "type": "string"
+                                        },
+                                        "correlation_id": {
+                                            "type": "string"
+                                        },
+                                        "executed": {
+                                            "type": "object",
+                                            "description": "Dettagli essenziali dell'esecuzione (mode, target, name)"
+                                        }
+                                    }
                                 }
                             }
                         }
                     },
                     "400": {
-                        "description": "Richiesta non valida o selezione auth fallita"
+                        "description": "Errore di validazione o selezione credenziali"
                     },
                     "500": {
-                        "description": "Errore interno o dipendenze mancanti"
+                        "description": "Errore runtime o dipendenze mancanti"
                     }
                 }
             }
@@ -64,73 +194,6 @@
                 "type": "apiKey",
                 "name": "x-functions-key",
                 "in": "header"
-            }
-        },
-        "schemas": {
-            "MongoExecRequest": {
-                "type": "object",
-                "required": [
-                    "database",
-                    "script"
-                ],
-                "properties": {
-                    "uri": {
-                        "type": "string",
-                        "nullable": true,
-                        "description": "Connection string MongoDB (opzionale, se non fornita viene letta da Key Vault)"
-                    },
-                    "database": {
-                        "type": "string",
-                        "description": "Nome del database su cui eseguire l'operazione"
-                    },
-                    "script": {
-                        "type": "string",
-                        "description": "JSON serializzato che descrive l'operazione (es. {\"collection\":\"users\",\"operation\":\"find\",\"filter\":{\"active\":true}})"
-                    },
-                    "auth_method": {
-                        "type": "string",
-                        "enum": [
-                            "auto",
-                            "userpass",
-                            "uri"
-                        ],
-                        "default": "auto",
-                        "description": "Metodo di autenticazione preferito"
-                    },
-                    "timeout_sec": {
-                        "type": "number",
-                        "default": 120,
-                        "description": "Timeout in secondi per l'esecuzione"
-                    },
-                    "correlation_id": {
-                        "type": "string",
-                        "nullable": true,
-                        "description": "Correlation ID opzionale per tracciamento"
-                    }
-                }
-            },
-            "MongoExecResponse": {
-                "type": "object",
-                "properties": {
-                    "result": {
-                        "type": "array",
-                        "items": {
-                            "type": "object"
-                        },
-                        "description": "Risultato dell'operazione MongoDB"
-                    },
-                    "auth_mode": {
-                        "type": "string",
-                        "enum": [
-                            "userpass",
-                            "uri"
-                        ],
-                        "description": "Metodo di autenticazione effettivamente utilizzato"
-                    },
-                    "request_id": {
-                        "type": "string"
-                    }
-                }
             }
         }
     }

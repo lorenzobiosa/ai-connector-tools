@@ -15,3 +15,6 @@ __pycache__/
 .DS_Store
 .vscode/
 .idea/
+
+# Archive files
+*.zip
