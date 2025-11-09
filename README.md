@@ -224,7 +224,7 @@ Per garantire un deploy conforme alle best practice, è necessario predisporre u
 ### Procedura di packaging
 Dalla **root del progetto**, eseguire il seguente comando:
 ```bash
-zip -r app_package.zip host.json requirements.txt README.md src/
+zip -r app_package.zip host.json requirements.txt src/
 ```
 
 ### Linee guida
@@ -240,7 +240,9 @@ zip -r app_package.zip host.json requirements.txt README.md src/
 3. **IAM Key Vault**: assegna ruolo **Key Vault Secrets User**.  
 4. **Secrets**: popola i secret necessari (SSH/K8s/Atlas/Mongo).  
 5. **App Settings**: imposta tutte le variabili di configurazione.  
-6. **Publish**: `func azure functionapp publish <APP> --python`.  
+6. **Publish**: `func azure functionapp publish <APP> --python`.
+
+> La variabile d'ambiente `SCM_DO_BUILD_DURING_DEPLOYMENT` deve essere valorizzata a `true`
 
 ---
 
