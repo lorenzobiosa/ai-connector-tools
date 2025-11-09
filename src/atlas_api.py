@@ -8,9 +8,9 @@ import subprocess
 import azure.functions as func
 from pydantic import BaseModel, Field, validator
 
-from function_app import app, logger
-from keyvault import _kv_get
-from settings import (
+from . import app, logger
+from .keyvault import _kv_get
+from .settings import (
     ATLAS_PUBLIC_KEY_SECRET_NAME, ATLAS_PRIVATE_KEY_SECRET_NAME,
     ATLAS_AUTH_PREFERENCE, ATLAS_DEFAULT_PROFILE,
     ATLAS_CLI_VERSION, ATLAS_CLI_DOWNLOAD_URL_TEMPLATE,

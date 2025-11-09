@@ -1,7 +1,7 @@
 import logging
 from azure.identity import DefaultAzureCredential
 from azure.keyvault.secrets import SecretClient
-from settings import KEY_VAULT_URL, APP_NAME
+from .settings import KEY_VAULT_URL, APP_NAME
 
 logger = logging.getLogger(APP_NAME)
 

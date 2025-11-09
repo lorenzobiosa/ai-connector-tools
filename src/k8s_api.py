@@ -12,9 +12,9 @@ import yaml
 from pydantic import BaseModel, Field, validator
 from typing import Optional
 
-from function_app import app, logger
-from keyvault import _kv_get
-from settings import (
+from . import app, logger
+from .keyvault import _kv_get
+from .settings import (
     DEFAULT_KUBECTL_VERSION, KUBECTL_DOWNLOAD_URL_TEMPLATE,
     KUBECTL_PATH_DEFAULT, KUBECTL_FALLBACK_PATH,
     K8S_AUTH_PREFERENCE, KUBE_CONFIG_SECRET_NAME, KUBE_TOKEN_SECRET_NAME,
