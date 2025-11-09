@@ -8,9 +8,9 @@ from pydantic import BaseModel, Field, validator
 
 from typing import Optional
 
-from .app import app, logger
-from .keyvault import _kv_get
-from .settings import (
+from function_app import app, logger
+from keyvault import _kv_get
+from settings import (
     MONGO_AUTH_PREFERENCE, MONGO_URI_SECRET_NAME,
     MONGO_USERNAME_SECRET_NAME, MONGO_PASSWORD_SECRET_NAME,
     MONGO_HOST, MONGO_HOST_SECRET_NAME, MONGO_SCHEME, MONGO_AUTH_DB,

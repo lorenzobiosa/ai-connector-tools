@@ -9,9 +9,9 @@ from typing import Optional
 import azure.functions as func
 from pydantic import BaseModel, Field, validator
 
-from .app import app, logger
-from .keyvault import _kv_get
-from .settings import (
+from function_app import app, logger
+from keyvault import _kv_get
+from settings import (
     SSH_USERNAME_SECRET_NAME, SSH_PASSWORD_SECRET_NAME,
     SSH_PRIVATE_KEY_SECRET_NAME, SSH_PRIVATE_KEY_PASSPHRASE_SECRET_NAME,
     AUTH_PREFERENCE, ALLOW_UNKNOWN_HOSTS,
