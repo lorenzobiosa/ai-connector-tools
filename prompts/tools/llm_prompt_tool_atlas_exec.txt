@@ -1,0 +1,10 @@
+Strumento HTTP per eseguire comandi MongoDB Atlas CLI in modo sicuro.
+- Nessuna credenziale nel payload: API Key o profilo Atlas sono letti da Azure Key Vault (Managed Identity).
+- Nessuna allow-list o template: il comando Atlas CLI viene passato tal quale (es. "clusters list").
+- Autenticazione tramite Function Key (header `x-functions-key`).
+- Supporto multiplo per l’autenticazione (auth_method):
+  - api_key → usa chiavi API Atlas salvate in Key Vault;
+  - profile → usa un profilo Atlas CLI configurato;
+  - auto → seleziona automaticamente il metodo più sicuro tra quelli disponibili (preferenza API Key).
+- Scarica automaticamente il client Atlas CLI al primo avvio in una directory persistente (/home/site/tools o /tmp in fallback).
+- Connessioni sicure HTTPS verso Atlas API; nessuna credenziale esposta nei log o nel payload.

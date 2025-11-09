@@ -1,0 +1,155 @@
+{
+    "openapi": "3.0.3",
+    "info": {
+        "title": "Atlas Exec API",
+        "version": "1.0.0",
+        "description": "API per eseguire comandi MongoDB Atlas CLI in modalità sicura.\n- Nessuna credenziale nel payload: API Key o profilo sono gestiti tramite Key Vault e variabili d'ambiente.\n- Supporta autenticazione con **api_key**, **profile**, o modalità **auto** (preferisce api_key se disponibile)."
+    },
+    "servers": [
+        {
+            "url": "https://<APP>.azurewebsites.net"
+        }
+    ],
+    "paths": {
+        "/atlas/exec?code=<FUNCTION_KEY>": {
+            "post": {
+                "summary": "Esecuzione remota di comandi Atlas CLI",
+                "operationId": "atlasExec",
+                "description": "Invoca la Function per eseguire un comando Atlas CLI. Le credenziali sono gestite tramite Key Vault e non devono essere incluse nel payload.",
+                "security": [
+                    {
+                        "function_key": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AtlasExecRequest"
+                            },
+                            "example": {
+                                "command": "clusters list",
+                                "auth_method": "auto",
+                                "profile": "prod",
+                                "timeout_sec": 120
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Comando Atlas CLI eseguito",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AtlasExecResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Richiesta non valida o selezione auth fallita"
+                    },
+                    "408": {
+                        "description": "Timeout comando Atlas CLI"
+                    },
+                    "500": {
+                        "description": "Errore interno o installazione CLI fallita"
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "function_key": {
+                "type": "apiKey",
+                "name": "x-functions-key",
+                "in": "header"
+            }
+        },
+        "schemas": {
+            "AtlasExecRequest": {
+                "type": "object",
+                "required": [
+                    "command"
+                ],
+                "properties": {
+                    "command": {
+                        "type": "string",
+                        "description": "Comando Atlas CLI da eseguire (es. 'clusters list')"
+                    },
+                    "auth_method": {
+                        "type": "string",
+                        "enum": [
+                            "auto",
+                            "api_key",
+                            "profile"
+                        ],
+                        "default": "auto",
+                        "description": "Metodo di autenticazione preferito"
+                    },
+                    "profile": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "Nome profilo Atlas CLI (usato se auth_method=profile o fallback)"
+                    },
+                    "timeout_sec": {
+                        "type": "number",
+                        "default": 120,
+                        "description": "Timeout in secondi per l'esecuzione del comando"
+                    },
+                    "correlation_id": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "Correlation ID opzionale per tracciamento"
+                    }
+                }
+            },
+            "AtlasExecResponse": {
+                "type": "object",
+                "properties": {
+                    "command_executed": {
+                        "type": "string"
+                    },
+                    "auth_mode": {
+                        "type": "string",
+                        "enum": [
+                            "api_key",
+                            "profile",
+                            "none"
+                        ]
+                    },
+                    "profile_used": {
+                        "type": "string"
+                    },
+                    "exit_status": {
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "stdout": {
+                        "type": "string"
+                    },
+                    "stderr": {
+                        "type": "string"
+                    },
+                    "started_at": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "finished_at": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "duration_ms": {
+                        "type": "integer"
+                    },
+                    "request_id": {
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    }
+}

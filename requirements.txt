@@ -4,3 +4,4 @@ paramiko==3.5.0
 azure-identity==1.17.1
 azure-keyvault-secrets==4.9.0
 PyYAML>=6.0
+pymongo>=4.8.0

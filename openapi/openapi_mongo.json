@@ -1,0 +1,137 @@
+{
+    "openapi": "3.0.3",
+    "info": {
+        "title": "Mongo Exec API",
+        "version": "1.0.0",
+        "description": "API per eseguire operazioni su MongoDB in modalità sicura.\n- Nessuna credenziale nel payload: username/password o URI sono gestiti tramite Key Vault e variabili d'ambiente.\n- Supporta autenticazione con **userpass**, **uri**, o modalità **auto** (preferisce userpass se disponibile)."
+    },
+    "servers": [
+        {
+            "url": "https://<APP>.azurewebsites.net"
+        }
+    ],
+    "paths": {
+        "/mongo/exec?code=<FUNCTION_KEY>": {
+            "post": {
+                "summary": "Esecuzione remota di operazioni MongoDB",
+                "operationId": "mongoExec",
+                "description": "Invoca la Function per eseguire query MongoDB (find, distinct, aggregate). Le credenziali sono gestite tramite Key Vault e non devono essere incluse nel payload.",
+                "security": [
+                    {
+                        "function_key": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MongoExecRequest"
+                            },
+                            "example": {
+                                "database": "appdb",
+                                "script": "{\"collection\":\"users\",\"operation\":\"find\",\"filter\":{\"active\":true}}",
+                                "auth_method": "auto",
+                                "timeout_sec": 120
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Operazione MongoDB eseguita con successo",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MongoExecResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Richiesta non valida o selezione auth fallita"
+                    },
+                    "500": {
+                        "description": "Errore interno o dipendenze mancanti"
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "function_key": {
+                "type": "apiKey",
+                "name": "x-functions-key",
+                "in": "header"
+            }
+        },
+        "schemas": {
+            "MongoExecRequest": {
+                "type": "object",
+                "required": [
+                    "database",
+                    "script"
+                ],
+                "properties": {
+                    "uri": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "Connection string MongoDB (opzionale, se non fornita viene letta da Key Vault)"
+                    },
+                    "database": {
+                        "type": "string",
+                        "description": "Nome del database su cui eseguire l'operazione"
+                    },
+                    "script": {
+                        "type": "string",
+                        "description": "JSON serializzato che descrive l'operazione (es. {\"collection\":\"users\",\"operation\":\"find\",\"filter\":{\"active\":true}})"
+                    },
+                    "auth_method": {
+                        "type": "string",
+                        "enum": [
+                            "auto",
+                            "userpass",
+                            "uri"
+                        ],
+                        "default": "auto",
+                        "description": "Metodo di autenticazione preferito"
+                    },
+                    "timeout_sec": {
+                        "type": "number",
+                        "default": 120,
+                        "description": "Timeout in secondi per l'esecuzione"
+                    },
+                    "correlation_id": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "Correlation ID opzionale per tracciamento"
+                    }
+                }
+            },
+            "MongoExecResponse": {
+                "type": "object",
+                "properties": {
+                    "result": {
+                        "type": "array",
+                        "items": {
+                            "type": "object"
+                        },
+                        "description": "Risultato dell'operazione MongoDB"
+                    },
+                    "auth_mode": {
+                        "type": "string",
+                        "enum": [
+                            "userpass",
+                            "uri"
+                        ],
+                        "description": "Metodo di autenticazione effettivamente utilizzato"
+                    },
+                    "request_id": {
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    }
+}

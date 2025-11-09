@@ -1,0 +1,9 @@
+Strumento HTTP per eseguire operazioni su database MongoDB (query e comandi CRUD) in modo sicuro.
+- Nessuna credenziale nel payload: username/password o URI sono letti da Azure Key Vault (Managed Identity).
+- Nessuna allow-list o template: il comando viene passato come script JSON (es. {"collection":"users","operation":"find","filter":{"active":true}}).
+- Autenticazione tramite Function Key (header `x-functions-key`).
+- Supporto multiplo per l’autenticazione (auth_method):
+  - userpass → usa username/password e host salvati in Key Vault per costruire l’URI;
+  - uri → usa una connection string completa salvata in Key Vault;
+  - auto → seleziona automaticamente il metodo più sicuro tra quelli disponibili (preferenza userpass).
+- Connessioni TLS abilitate per compatibilità universale; nessuna credenziale esposta nei log o nel payload.
