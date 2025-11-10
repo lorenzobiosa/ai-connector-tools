@@ -2,8 +2,8 @@
     "openapi": "3.0.3",
     "info": {
         "title": "Atlas Exec API",
-        "version": "1.0.0",
-        "description": "API per eseguire comandi MongoDB Atlas CLI in modalità sicura.\n- Nessuna credenziale nel payload: API Key o profilo sono gestiti tramite Key Vault e variabili d'ambiente.\n- Supporta autenticazione con **api_key**, **profile**, o modalità **auto** (preferisce api_key se disponibile)."
+        "version": "1.1.0",
+        "description": "API per eseguire comandi MongoDB Atlas CLI in modalità sicura.\n- Nessuna credenziale nel payload: API Key lette da Azure Key Vault e iniettate come variabili d'ambiente.\n- Metodo di autenticazione **predefinito**: `api_key`. È possibile usare `profile` se esplicitato.\n- Il `projectId`, quando richiesto dal comando, deve essere fornito dal chiamante (es. `--projectId` o configurando `MONGODB_ATLAS_PROJECT_ID`). In caso di assenza, l'errore dell'Atlas CLI viene restituito così com'è (status 400) per permettere all'agente di chiedere il parametro all'utente."
     },
     "servers": [
         {
@@ -15,7 +15,7 @@
             "post": {
                 "summary": "Esecuzione remota di comandi Atlas CLI",
                 "operationId": "atlasExec",
-                "description": "Invoca la Function per eseguire un comando Atlas CLI. Le credenziali sono gestite tramite Key Vault e non devono essere incluse nel payload.",
+                "description": "Invoca la Function per eseguire un comando Atlas CLI. Le credenziali sono gestite tramite Key Vault e non devono essere incluse nel payload.\nIl processo figlio non usa proxy e forza `--output json` se non specificato.",
                 "security": [
                     {
                         "function_key": []
@@ -28,18 +28,39 @@
                             "schema": {
                                 "$ref": "#/components/schemas/AtlasExecRequest"
                             },
-                            "example": {
-                                "command": "clusters list",
-                                "auth_method": "auto",
-                                "profile": "prod",
-                                "timeout_sec": 120
+                            "examples": {
+                                "ClustersListConProject": {
+                                    "summary": "clusters list con projectId",
+                                    "value": {
+                                        "command": "clusters list --projectId 5e2211c17a3e5a48f5497de3",
+                                        "auth_method": "api_key",
+                                        "timeout_sec": 60
+                                    }
+                                },
+                                "ProjectsList": {
+                                    "summary": "projects list (utile per ottenere il projectId)",
+                                    "value": {
+                                        "command": "projects list",
+                                        "auth_method": "api_key",
+                                        "timeout_sec": 30
+                                    }
+                                },
+                                "UsoProfilo": {
+                                    "summary": "Uso esplicito del profilo",
+                                    "value": {
+                                        "command": "clusters list",
+                                        "auth_method": "profile",
+                                        "profile": "prod",
+                                        "timeout_sec": 60
+                                    }
+                                }
                             }
                         }
                     }
                 },
                 "responses": {
                     "200": {
-                        "description": "Comando Atlas CLI eseguito",
+                        "description": "Comando Atlas CLI eseguito con successo",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -49,13 +70,44 @@
                         }
                     },
                     "400": {
-                        "description": "Richiesta non valida o selezione auth fallita"
+                        "description": "Richiesta non valida, selezione auth fallita, o comando Atlas terminato con exit code != 0",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
                     },
                     "408": {
-                        "description": "Timeout comando Atlas CLI"
+                        "description": "Timeout comando Atlas CLI",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AtlasExecResponse"
+                                }
+                            }
+                        }
                     },
                     "500": {
-                        "description": "Errore interno o installazione CLI fallita"
+                        "description": "Errore imprevisto durante l'esecuzione; il messaggio originale è esposto per analisi",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AtlasExecResponse"
+                                }
+                            }
+                        }
+                    },
+                    "502": {
+                        "description": "Errore infrastrutturale (installazione CLI o Key Vault)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -78,7 +130,7 @@
                 "properties": {
                     "command": {
                         "type": "string",
-                        "description": "Comando Atlas CLI da eseguire (es. 'clusters list')"
+                        "description": "Comando Atlas CLI da eseguire (es. 'clusters list'). Il backend forzerà '--output json' se non presente."
                     },
                     "auth_method": {
                         "type": "string",
@@ -87,13 +139,13 @@
                             "api_key",
                             "profile"
                         ],
-                        "default": "auto",
-                        "description": "Metodo di autenticazione preferito"
+                        "default": "api_key",
+                        "description": "Metodo di autenticazione preferito. Default=api_key (API Key da Key Vault)."
                     },
                     "profile": {
                         "type": "string",
                         "nullable": true,
-                        "description": "Nome profilo Atlas CLI (usato se auth_method=profile o fallback)"
+                        "description": "Nome profilo Atlas CLI (usato solo se auth_method=profile)"
                     },
                     "timeout_sec": {
                         "type": "number",
@@ -113,13 +165,20 @@
                     "command_executed": {
                         "type": "string"
                     },
+                    "argv_executed": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Argv finale eseguito (binario + argomenti), utile per diagnostica"
+                    },
                     "auth_mode": {
                         "type": "string",
                         "enum": [
                             "api_key",
-                            "profile",
-                            "none"
-                        ]
+                            "profile"
+                        ],
+                        "description": "Metodo di autenticazione effettivamente utilizzato"
                     },
                     "profile_used": {
                         "type": "string"
@@ -144,6 +203,20 @@
                     },
                     "duration_ms": {
                         "type": "integer"
+                    },
+                    "request_id": {
+                        "type": "string"
+                    }
+                }
+            },
+            "ErrorResponse": {
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "type": "string"
+                    },
+                    "message": {
+                        "type": "string"
                     },
                     "request_id": {
                         "type": "string"

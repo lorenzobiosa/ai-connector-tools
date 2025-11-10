@@ -1,10 +1,11 @@
-Strumento HTTP per eseguire comandi MongoDB Atlas CLI in modo sicuro.
-- Nessuna credenziale nel payload: API Key o profilo Atlas sono letti da Azure Key Vault (Managed Identity).
-- Nessuna allow-list o template: il comando Atlas CLI viene passato tal quale (es. "clusters list").
-- Autenticazione tramite Function Key (header `x-functions-key`).
-- Supporto multiplo per l’autenticazione (auth_method):
-  - api_key → usa chiavi API Atlas salvate in Key Vault;
-  - profile → usa un profilo Atlas CLI configurato;
-  - auto → seleziona automaticamente il metodo più sicuro tra quelli disponibili (preferenza API Key).
-- Scarica automaticamente il client Atlas CLI al primo avvio in una directory persistente (/home/site/tools o /tmp in fallback).
-- Connessioni sicure HTTPS verso Atlas API; nessuna credenziale esposta nei log o nel payload.
+Strumento HTTP per eseguire comandi MongoDB Atlas CLI in modo sicuro.  
+- Nessuna credenziale nel payload: API Key da Key Vault (Managed Identity).  
+- Autenticazione: `api_key` (default), `profile` o `auto`.  
+- Comando passato tal quale (es. "clusters list"); il tool forza `--output json`.  
+- Scarica e installa Atlas CLI automaticamente (estrazione sicura, binario `atlas`).  
+- Non usa proxy; rimuove variabili proxy dall’ambiente.  
+- Se il comando richiede `--projectId`, deve essere fornito dall’agente; in caso contrario errore CLI restituito (status 400).  
+- Codici HTTP: 200 ok, 400 errore CLI, 408 timeout, 500 errore imprevisto (messaggio incluso), 502 problemi infrastrutturali.  
+- Output: `command_executed`, `argv_executed`, `auth_mode`, `stdout`, `stderr`, timing, `request_id`.  
+Esempio:  
+`{"command":"clusters list --projectId <ID>","auth_method":"api_key","timeout_sec":120}`
