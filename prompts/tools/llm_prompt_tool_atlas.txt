@@ -1,11 +1,10 @@
-Strumento HTTP per eseguire comandi MongoDB Atlas CLI in modo sicuro.  
+Esegui comandi MongoDB Atlas CLI in modo sicuro tramite Azure Function.  
 - Nessuna credenziale nel payload: API Key da Key Vault (Managed Identity).  
 - Autenticazione: `api_key` (default), `profile` o `auto`.  
-- Comando passato tal quale (es. "clusters list"); il tool forza `--output json`.  
-- Scarica e installa Atlas CLI automaticamente (estrazione sicura, binario `atlas`).  
-- Non usa proxy; rimuove variabili proxy dall’ambiente.  
-- Se il comando richiede `--projectId`, deve essere fornito dall’agente; in caso contrario errore CLI restituito (status 400).  
-- Codici HTTP: 200 ok, 400 errore CLI, 408 timeout, 500 errore imprevisto (messaggio incluso), 502 problemi infrastrutturali.  
-- Output: `command_executed`, `argv_executed`, `auth_mode`, `stdout`, `stderr`, timing, `request_id`.  
+- Il comando viene passato tal quale: tutte le opzioni (es. `--output json`, `--projectId`, `--tier`) devono essere fornite dal chiamante.  
+- Nessun flag aggiunto dal backend: il connettore è generico e astratto.  
+- Se il comando richiede `projectId`, deve essere incluso nel payload.  
+- Codici HTTP: 200 (ok), 400 (errore CLI o parametri), 408 (timeout), 500 (errore imprevisto), 502 (problema infrastrutturale).  
+- Output: `stdout`, `stderr`, `exit_status`, argv eseguito, timing, request_id.  
 Esempio:  
-`{"command":"clusters list --projectId <ID>","auth_method":"api_key","timeout_sec":120}`
+`{"command":"clusters list --projectId <ID> --output json","auth_method":"api_key","timeout_sec":60}`  

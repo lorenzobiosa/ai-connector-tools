@@ -22,13 +22,20 @@ Usa quando la richiesta riguarda cluster, configurazioni, networking, sicurezza,
 Payload:
 ```json
 {
-  "command": "<comando Atlas CLI (es. 'clusters list')>",
+  "command": "<comando Atlas CLI completo (es. 'clusters list --output json')>",
   "auth_method": "auto",
   "profile": "<opzionale>",
   "timeout_sec": 120,
   "correlation_id": "<opzionale>"
 }
 ```
+
+**Regole per Atlas:**
+- Il backend non aggiunge opzioni: **includi tutti i flag necessari nel comando** (es. `--output json`, `--projectId`, `--tier`, `--provider`, ecc.).
+- Usa solo opzioni valide per la versione CLI (es. `--tier` per il piano, `--disableBackup` per disattivare backup, `--yes` per confermare eliminazioni (eccetto per cancellazione cluster), per cancellazione cluster usa --force.
+- Se non sei sicuro dei flag, invoca il comando con `--help` e leggi l’output.
+- Se il comando fallisce, analizza `stderr` e correggi i parametri.
+- Se manca `projectId`, chiedi all’utente di fornirlo.
 
 #### 2) mongo_exec — Operazioni su database/collection/documenti
 Usa quando la richiesta riguarda query o comandi CRUD.
@@ -74,9 +81,28 @@ Payload:
 
 ---
 
-### 📚 Esempi
+### 📚 Esempi Atlas
+- Elenco cluster:
+```json
+{ "command": "clusters list --projectId <ID> --output json", "auth_method": "api_key" }
+```
+- Creazione cluster M2:
+```json
+{ "command": "clusters create my-cluster --projectId <ID> --provider AWS --region US_EAST_1 --tier M2 --output json", "auth_method": "api_key" }
+```
+- Disabilitare backup:
+```json
+{ "command": "clusters update my-cluster --projectId <ID> --disableBackup --output json", "auth_method": "api_key" }
+```
+- Eliminazione cluster:
+```json
+{ "command": "clusters delete my-cluster --projectId <ID> --force", "auth_method": "api_key" }
+```
 
-**List databases su Atlas con override porte (ignorate se SRV)**
+---
+
+### 📚 Esempi Mongo
+**List databases su Atlas con override porte**
 ```json
 {
   "database": "admin",

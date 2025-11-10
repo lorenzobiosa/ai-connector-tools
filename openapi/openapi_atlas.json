@@ -2,8 +2,8 @@
     "openapi": "3.0.3",
     "info": {
         "title": "Atlas Exec API",
-        "version": "1.1.0",
-        "description": "API per eseguire comandi MongoDB Atlas CLI in modalità sicura.\n- Nessuna credenziale nel payload: API Key lette da Azure Key Vault e iniettate come variabili d'ambiente.\n- Metodo di autenticazione **predefinito**: `api_key`. È possibile usare `profile` se esplicitato.\n- Il `projectId`, quando richiesto dal comando, deve essere fornito dal chiamante (es. `--projectId` o configurando `MONGODB_ATLAS_PROJECT_ID`). In caso di assenza, l'errore dell'Atlas CLI viene restituito così com'è (status 400) per permettere all'agente di chiedere il parametro all'utente."
+        "version": "1.2.0",
+        "description": "API per eseguire comandi MongoDB Atlas CLI in modalità sicura.\n- Nessuna credenziale nel payload: API Key lette da Azure Key Vault e iniettate come variabili d'ambiente.\n- Metodo di autenticazione predefinito: `api_key`. È possibile usare `profile` se esplicitato.\n- Tutte le opzioni CLI (incluso `--output`) devono essere fornite dal chiamante.\n- Il `projectId`, quando richiesto dal comando, deve essere fornito dal chiamante (es. `--projectId` o configurando `MONGODB_ATLAS_PROJECT_ID`)."
     },
     "servers": [
         {
@@ -15,7 +15,7 @@
             "post": {
                 "summary": "Esecuzione remota di comandi Atlas CLI",
                 "operationId": "atlasExec",
-                "description": "Invoca la Function per eseguire un comando Atlas CLI. Le credenziali sono gestite tramite Key Vault e non devono essere incluse nel payload.\nIl processo figlio non usa proxy e forza `--output json` se non specificato.",
+                "description": "Invoca la Function per eseguire un comando Atlas CLI. Le credenziali sono gestite tramite Key Vault e non devono essere incluse nel payload. Nessun parametro viene aggiunto automaticamente: il comando è passato tal quale.",
                 "security": [
                     {
                         "function_key": []
@@ -29,29 +29,20 @@
                                 "$ref": "#/components/schemas/AtlasExecRequest"
                             },
                             "examples": {
-                                "ClustersListConProject": {
+                                "ClustersList": {
                                     "summary": "clusters list con projectId",
                                     "value": {
-                                        "command": "clusters list --projectId 5e2211c17a3e5a48f5497de3",
+                                        "command": "clusters list --projectId 5e2211c17a3e5a48f5497de3 --output json",
                                         "auth_method": "api_key",
                                         "timeout_sec": 60
                                     }
                                 },
                                 "ProjectsList": {
-                                    "summary": "projects list (utile per ottenere il projectId)",
+                                    "summary": "projects list",
                                     "value": {
-                                        "command": "projects list",
+                                        "command": "projects list --output json",
                                         "auth_method": "api_key",
                                         "timeout_sec": 30
-                                    }
-                                },
-                                "UsoProfilo": {
-                                    "summary": "Uso esplicito del profilo",
-                                    "value": {
-                                        "command": "clusters list",
-                                        "auth_method": "profile",
-                                        "profile": "prod",
-                                        "timeout_sec": 60
                                     }
                                 }
                             }
@@ -70,7 +61,7 @@
                         }
                     },
                     "400": {
-                        "description": "Richiesta non valida, selezione auth fallita, o comando Atlas terminato con exit code != 0",
+                        "description": "Richiesta non valida o comando Atlas terminato con exit code != 0",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -130,7 +121,7 @@
                 "properties": {
                     "command": {
                         "type": "string",
-                        "description": "Comando Atlas CLI da eseguire (es. 'clusters list'). Il backend forzerà '--output json' se non presente."
+                        "description": "Comando Atlas CLI da eseguire (es. 'clusters list'). Tutte le opzioni devono essere incluse dal chiamante."
                     },
                     "auth_method": {
                         "type": "string",
@@ -169,16 +160,10 @@
                         "type": "array",
                         "items": {
                             "type": "string"
-                        },
-                        "description": "Argv finale eseguito (binario + argomenti), utile per diagnostica"
+                        }
                     },
                     "auth_mode": {
-                        "type": "string",
-                        "enum": [
-                            "api_key",
-                            "profile"
-                        ],
-                        "description": "Metodo di autenticazione effettivamente utilizzato"
+                        "type": "string"
                     },
                     "profile_used": {
                         "type": "string"
@@ -194,12 +179,10 @@
                         "type": "string"
                     },
                     "started_at": {
-                        "type": "number",
-                        "format": "double"
+                        "type": "number"
                     },
                     "finished_at": {
-                        "type": "number",
-                        "format": "double"
+                        "type": "number"
                     },
                     "duration_ms": {
                         "type": "integer"
